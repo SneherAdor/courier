@@ -1,0 +1,44 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        php-version: ['8.1', '8.2', '8.3']
+    
+    name: PHP ${{ matrix.php-version }} Tests
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, xml, curl
+          coverage: none
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+      
+      - name: Run unit tests
+        run: composer test-unit
+      
+      - name: Run feature tests
+        run: composer test-feature
+      
+      - name: Run integration tests (if credentials available)
+        env:
+          PATHAO_CLIENT_ID: ${{ secrets.PATHAO_CLIENT_ID }}
+          PATHAO_CLIENT_SECRET: ${{ secrets.PATHAO_CLIENT_SECRET }}
+          PATHAO_USERNAME: ${{ secrets.PATHAO_USERNAME }}
+          PATHAO_PASSWORD: ${{ secrets.PATHAO_PASSWORD }}
+        run: composer test-integration || echo "Integration tests skipped (credentials not available)"

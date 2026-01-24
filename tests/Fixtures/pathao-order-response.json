@@ -1,0 +1,11 @@
+{
+    "type": "success",
+    "code": 200,
+    "message": "Order created successfully",
+    "data": {
+        "consignment_id": "TRACK123456",
+        "merchant_order_id": "ORDER123",
+        "status": "Pending",
+        "created_at": "2024-01-15 10:30:00"
+    }
+}
