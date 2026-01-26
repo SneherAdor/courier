@@ -75,8 +75,12 @@ class CourierManager
     
     /**
      * Create a shipment using the specified courier.
+     * 
+     * @param string $courierName
+     * @param Shipment|array<string, mixed> $shipment Shipment DTO or array
+     * @return Shipment
      */
-    public function createShipment(string $courierName, Shipment $shipment): Shipment
+    public function createShipment(string $courierName, Shipment|array $shipment): Shipment
     {
         $courier = $this->resolver->resolve($courierName);
         
@@ -107,9 +111,15 @@ class CourierManager
     
     /**
      * Estimate delivery rate.
+     * 
+     * @param string $courierName
+     * @param Rate|array<string, mixed> $rateRequest Rate DTO or array
+     * @return Rate
      */
-    public function estimateRate(string $courierName, Rate $rateRequest): Rate
+    public function estimateRate(string $courierName, Rate|array $rateRequest): Rate
     {
+        $rateRequest = DtoNormalizer::rate($rateRequest);
+        
         $courier = $this->resolver->resolve($courierName);
         
         if (!$courier instanceof RateInterface) {
