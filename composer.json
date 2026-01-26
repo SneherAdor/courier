@@ -1,12 +1,12 @@
 {
     "name": "millat/desh-courier",
-    "description": "Unified multi-courier SDK for Bangladeshi courier services - Works with plain PHP, Laravel, and WordPress",
+    "description": "Unified multi-courier package for courier services",
     "type": "library",
     "license": "MIT",
     "authors": [
         {
-            "name": "Desh Courier Team",
-            "email": "dev@deshcourier.com"
+            "name": "Ahsanul Haque Millat",
+            "email": "sneherador.sa.sa@gmail.com"
         }
     ],
     "require": {
