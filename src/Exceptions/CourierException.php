@@ -2,9 +2,6 @@
 
 namespace Millat\DeshCourier\Exceptions;
 
-/**
- * Base exception for all courier-related errors.
- */
 class CourierException extends \Exception
 {
     protected ?string $courierName = null;

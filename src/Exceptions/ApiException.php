@@ -2,9 +2,6 @@
 
 namespace Millat\DeshCourier\Exceptions;
 
-/**
- * Thrown when a courier API returns an error.
- */
 class ApiException extends CourierException
 {
     protected ?int $statusCode = null;

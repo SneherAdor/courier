@@ -7,11 +7,6 @@ use GuzzleHttp\Exception\GuzzleException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
-/**
- * HTTP client wrapper for courier API requests.
- * 
- * Provides retry logic, logging, and error handling.
- */
 class HttpClient
 {
     private Client $client;
@@ -31,41 +26,26 @@ class HttpClient
         $this->retryDelay = $retryDelay;
     }
     
-    /**
-     * Make a GET request.
-     */
     public function get(string $url, array $options = []): array
     {
         return $this->request('GET', $url, $options);
     }
     
-    /**
-     * Make a POST request.
-     */
     public function post(string $url, array $options = []): array
     {
         return $this->request('POST', $url, $options);
     }
     
-    /**
-     * Make a PUT request.
-     */
     public function put(string $url, array $options = []): array
     {
         return $this->request('PUT', $url, $options);
     }
     
-    /**
-     * Make a DELETE request.
-     */
     public function delete(string $url, array $options = []): array
     {
         return $this->request('DELETE', $url, $options);
     }
     
-    /**
-     * Make an HTTP request with retry logic.
-     */
     public function request(string $method, string $url, array $options = []): array
     {
         $attempt = 0;
@@ -112,7 +92,7 @@ class HttpClient
                 }
                 
                 if ($attempt < $this->maxRetries) {
-                    usleep($this->retryDelay * 1000 * $attempt); // Exponential backoff
+                    usleep($this->retryDelay * 1000 * $attempt);
                 }
             }
         }
@@ -120,9 +100,6 @@ class HttpClient
         throw $lastException ?? new \RuntimeException("Request failed after {$this->maxRetries} attempts");
     }
     
-    /**
-     * Sanitize options for logging (remove sensitive data).
-     */
     private function sanitizeOptions(array $options): array
     {
         $sensitive = ['headers', 'auth', 'password', 'token', 'api_key'];

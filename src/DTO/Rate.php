@@ -2,22 +2,17 @@
 
 namespace Millat\DeshCourier\DTO;
 
-/**
- * Data Transfer Object for rate estimation.
- */
 class Rate
 {
-    // Request fields
     public ?string $fromCity = null;
     public ?string $fromZone = null;
     public ?string $toCity = null;
     public ?string $toZone = null;
-    public ?float $weight = null; // in kg
+    public ?float $weight = null;
     public ?string $serviceType = null;
     public ?float $codAmount = null;
     public ?float $itemValue = null;
     
-    // Response fields
     public ?float $deliveryCharge = null;
     public ?float $codCharge = null;
     public ?float $totalCharge = null;
@@ -25,15 +20,9 @@ class Rate
     public ?int $estimatedDays = null;
     public ?\DateTimeInterface $estimatedDeliveryDate = null;
     
-    // Additional information
-    public ?array $breakdown = null; // Detailed charge breakdown
+    public ?array $breakdown = null;
     public ?string $courierName = null;
     
-    /**
-     * Constructor with optional mass assignment from array.
-     * 
-     * @param array<string, mixed> $data Optional array of data to populate properties
-     */
     public function __construct(array $data = [])
     {
         if (!empty($data)) {
@@ -41,12 +30,6 @@ class Rate
         }
     }
     
-    /**
-     * Fill properties from array.
-     * 
-     * @param array<string, mixed> $data
-     * @return self
-     */
     public function fill(array $data): self
     {
         foreach ($data as $key => $value) {
@@ -62,20 +45,11 @@ class Rate
         return $this;
     }
     
-    /**
-     * Create from array (static factory method).
-     * 
-     * @param array<string, mixed> $data
-     * @return self
-     */
     public static function fromArray(array $data): self
     {
         return new self($data);
     }
     
-    /**
-     * Convert to array.
-     */
     public function toArray(): array
     {
         $data = [];

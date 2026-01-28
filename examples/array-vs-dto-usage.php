@@ -1,9 +1,5 @@
 <?php
 
-/**
- * Example demonstrating both array and DTO usage patterns
- */
-
 require __DIR__ . '/../vendor/autoload.php';
 
 use Millat\DeshCourier\DeshCourier;
@@ -12,9 +8,6 @@ use Millat\DeshCourier\DTO\Rate;
 
 echo "=== Desh Courier SDK - Array vs DTO Usage Examples ===\n\n";
 
-// ============================================
-// Example 1: Creating Shipment with DTO Object
-// ============================================
 echo "1. Creating Shipment with DTO Object (IDE autocomplete supported)\n";
 
 $shipment = new Shipment();
@@ -29,9 +22,8 @@ $shipment->senderAddress = 'Shop 456, Market Street';
 $shipment->senderCity = 'Dhaka';
 $shipment->weight = 1.5;
 $shipment->codAmount = 1500;
-$shipment->serviceType = 'next_day'; // IDE autocomplete works here!
+$shipment->serviceType = 'next_day';
 
-// Pass DTO object directly
 try {
     $result = DeshCourier::createShipment('pathao', $shipment);
     echo "✓ Shipment created with DTO object\n";
@@ -40,9 +32,6 @@ try {
     echo "✗ Error: " . $e->getMessage() . "\n\n";
 }
 
-// ============================================
-// Example 2: Creating Shipment with Array
-// ============================================
 echo "2. Creating Shipment with Array (Laravel-style, convenient)\n";
 
 $shipmentData = [
@@ -61,7 +50,6 @@ $shipmentData = [
     'itemDescription' => 'Electronics',
 ];
 
-// Pass array directly - SDK normalizes it internally
 try {
     $result = DeshCourier::createShipment('pathao', $shipmentData);
     echo "✓ Shipment created with array\n";
@@ -70,9 +58,6 @@ try {
     echo "✗ Error: " . $e->getMessage() . "\n\n";
 }
 
-// ============================================
-// Example 3: DTO Constructor with Array (Mass Assignment)
-// ============================================
 echo "3. Creating DTO with Constructor Mass Assignment\n";
 
 $shipment = new Shipment([
@@ -88,15 +73,11 @@ $shipment = new Shipment([
     'codAmount' => 1000,
 ]);
 
-// Now you have a DTO object with IDE autocomplete
 echo "✓ DTO created with mass assignment\n";
 echo "  Recipient: " . $shipment->recipientName . "\n";
 echo "  Weight: " . $shipment->weight . " kg\n";
 echo "  Service Type: " . ($shipment->serviceType ?? 'default') . "\n\n";
 
-// ============================================
-// Example 4: Rate Estimation with Array
-// ============================================
 echo "4. Estimating Rate with Array\n";
 
 $rateData = [
@@ -118,9 +99,6 @@ try {
     echo "✗ Error: " . $e->getMessage() . "\n\n";
 }
 
-// ============================================
-// Example 5: Rate Estimation with DTO
-// ============================================
 echo "5. Estimating Rate with DTO Object\n";
 
 $rate = new Rate();
@@ -139,20 +117,14 @@ try {
     echo "✗ Error: " . $e->getMessage() . "\n\n";
 }
 
-// ============================================
-// Example 6: Laravel Request Integration
-// ============================================
 echo "6. Laravel Request Integration Example\n";
 echo "// In your Laravel controller:\n";
 echo "public function createShipment(Request \$request)\n";
 echo "{\n";
-echo "    // Validate request\n";
 echo "    \$validated = \$request->validate([\n";
 echo "        'recipientName' => 'required|string',\n";
 echo "        'recipientPhone' => 'required|string',\n";
-echo "        // ... more validation rules\n";
 echo "    ]);\n\n";
-echo "    // Pass validated array directly - SDK handles normalization\n";
 echo "    \$result = DeshCourier::createShipment('pathao', \$validated);\n\n";
 echo "    return response()->json([\n";
 echo "        'tracking_id' => \$result->trackingId,\n";
@@ -160,15 +132,11 @@ echo "        'status' => \$result->status,\n";
 echo "    ]);\n";
 echo "}\n\n";
 
-// ============================================
-// Example 7: Using fill() method for updates
-// ============================================
 echo "7. Using fill() method for updates\n";
 
 $shipment = new Shipment();
 $shipment->recipientName = 'Initial Name';
 
-// Update multiple properties at once
 $shipment->fill([
     'recipientName' => 'Updated Name',
     'recipientPhone' => '01799999999',
@@ -180,9 +148,6 @@ echo "  Recipient: " . $shipment->recipientName . "\n";
 echo "  Phone: " . $shipment->recipientPhone . "\n";
 echo "  Weight: " . $shipment->weight . " kg\n\n";
 
-// ============================================
-// Example 8: Default Values
-// ============================================
 echo "8. Default Values in DTOs\n";
 
 $shipment = new Shipment([

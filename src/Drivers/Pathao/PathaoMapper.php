@@ -8,33 +8,22 @@ use Millat\DeshCourier\DTO\Rate;
 use Millat\DeshCourier\DTO\Cod;
 use Millat\DeshCourier\Core\StatusMapper;
 
-/**
- * Maps between Pathao API format and SDK DTOs.
- * 
- * This class encapsulates all courier-specific data transformation logic.
- */
 class PathaoMapper
 {
-    /**
-     * Map Shipment to Pathao API format.
-     */
     public function mapShipmentToApi(Shipment $shipment): array
     {
-        // Pathao API requires store_id, item_type as integer, delivery_type as integer
         $payload = [
             'store_id' => (int) ($shipment->courierData['store_id'] ?? null),
             'merchant_order_id' => $shipment->externalOrderId,
             'recipient_name' => $shipment->recipientName,
             'recipient_phone' => $shipment->recipientPhone,
             'recipient_address' => $shipment->recipientAddress,
-            'delivery_type' => (int) $this->mapServiceType($shipment->serviceType), // 48 for Normal, 12 for On Demand
-            'item_type' => 2, // 1 for Document, 2 for Parcel
+            'delivery_type' => (int) $this->mapServiceType($shipment->serviceType),
+            'item_type' => 2,
             'item_quantity' => (int) ($shipment->quantity ?? 1),
-            'item_weight' => (string) $shipment->weight, // Must be string
+            'item_weight' => (string) $shipment->weight,
             'amount_to_collect' => (int) ($shipment->codAmount ?? 0),
         ];
-        
-        // Optional fields
         if ($shipment->recipientCity) {
             $payload['recipient_city'] = (int) $shipment->recipientCity;
         }
@@ -57,14 +46,10 @@ class PathaoMapper
         return $payload;
     }
     
-    /**
-     * Map Pathao API response to Shipment.
-     */
     public function mapApiToShipment(array $apiData, ?Shipment $existing = null): Shipment
     {
         $shipment = $existing ?? new Shipment();
         
-        // Pathao API wraps response in 'data' field
         $data = $apiData['data'] ?? $apiData;
         
         $shipment->trackingId = $data['consignment_id'] ?? $data['tracking_id'] ?? $data['order_id'] ?? null;
@@ -82,9 +67,6 @@ class PathaoMapper
         return $shipment;
     }
     
-    /**
-     * Map Pathao API response to Tracking.
-     */
     public function mapApiToTracking(array $apiData): Tracking
     {
         $tracking = new Tracking();
@@ -100,7 +82,6 @@ class PathaoMapper
         $tracking->codAmount = $apiData['cod_amount'] ?? null;
         $tracking->codCollected = $apiData['cod_collected'] ?? null;
         
-        // Map timestamps
         if (isset($apiData['picked_at'])) {
             $tracking->pickedAt = new \DateTimeImmutable($apiData['picked_at']);
         }
@@ -111,7 +92,6 @@ class PathaoMapper
             $tracking->lastUpdatedAt = new \DateTimeImmutable($apiData['last_updated_at']);
         }
         
-        // Map history
         if (isset($apiData['history']) && is_array($apiData['history'])) {
             $tracking->history = array_map(function ($item) {
                 return [
@@ -127,9 +107,6 @@ class PathaoMapper
         return $tracking;
     }
     
-    /**
-     * Map Rate to Pathao API format.
-     */
     public function mapRateToApi(Rate $rate): array
     {
         return [
@@ -143,9 +120,6 @@ class PathaoMapper
         ];
     }
     
-    /**
-     * Map Pathao API response to Rate.
-     */
     public function mapApiToRate(array $apiData, Rate $existing): Rate
     {
         $rate = $existing;
@@ -168,9 +142,6 @@ class PathaoMapper
         return $rate;
     }
     
-    /**
-     * Map Pathao API response to Cod.
-     */
     public function mapApiToCod(array $apiData): Cod
     {
         $cod = new Cod();
@@ -194,10 +165,6 @@ class PathaoMapper
         return $cod;
     }
     
-    /**
-     * Map service type to Pathao format.
-     * Pathao uses: 48 for Normal Delivery, 12 for On Demand Delivery
-     */
     private function mapServiceType(?string $serviceType): int
     {
         $mapping = [
@@ -210,9 +177,6 @@ class PathaoMapper
         return $mapping[$serviceType ?? 'standard'] ?? 48;
     }
     
-    /**
-     * Get Pathao-specific status mapping.
-     */
     private function getStatusMapping(): array
     {
         return [

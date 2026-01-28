@@ -19,12 +19,6 @@ use Millat\DeshCourier\Exceptions\ApiException;
 use Millat\DeshCourier\Exceptions\InvalidConfigurationException;
 use Millat\DeshCourier\Support\Validate;
 
-/**
- * Pathao Courier Driver Implementation.
- * 
- * This is an example implementation showing how to create a courier driver.
- * Replace API endpoints and data mapping with actual Pathao API details.
- */
 class PathaoCourier implements
     CourierInterface,
     ShipmentInterface,
@@ -46,7 +40,6 @@ class PathaoCourier implements
         $this->httpClient = $httpClient ?? new HttpClient();
         $this->mapper = new PathaoMapper();
         
-        // Validate configuration
         if (empty($this->config->getClientId()) || empty($this->config->getClientSecret())) {
             throw new InvalidConfigurationException(
                 "Pathao configuration is incomplete. Client ID and Secret are required.",
@@ -56,8 +49,6 @@ class PathaoCourier implements
             );
         }
     }
-    
-    // ==================== CourierInterface ====================
     
     public function getName(): string
     {
@@ -103,14 +94,10 @@ class PathaoCourier implements
         }
     }
     
-    // ==================== ShipmentInterface ====================
-    
     public function createShipment(Shipment|array $shipment): Shipment
     {
-        // Normalize to DTO
         $shipment = DtoNormalizer::shipment($shipment);
         
-        // Validate
         $errors = $shipment->validateForCreation();
         if (!empty($errors)) {
             throw new ApiException(
@@ -121,13 +108,10 @@ class PathaoCourier implements
             );
         }
         
-        // Authenticate if needed
         $this->authenticate();
         
-        // Map DTO to Pathao API format
         $payload = $this->mapper->mapShipmentToApi($shipment);
         
-        // Make API request
         $response = $this->httpClient->post(
             $this->config->getApiUrl() . '/aladdin/api/v1/orders',
             [
@@ -150,13 +134,11 @@ class PathaoCourier implements
             );
         }
         
-        // Map response back to DTO
         return $this->mapper->mapApiToShipment($response['data'], $shipment);
     }
     
     public function updateShipment(string $trackingId, Shipment|array $shipment): Shipment
     {
-        // Normalize to DTO
         $shipment = DtoNormalizer::shipment($shipment);
         
         $this->authenticate();
@@ -363,8 +345,6 @@ class PathaoCourier implements
         return $tracking->status ?? StatusMapper::CREATED;
     }
     
-    // ==================== RateInterface ====================
-    
     public function estimateRate(Rate|array $rateRequest): Rate
     {
         $rateRequest = DtoNormalizer::rate($rateRequest);
@@ -436,8 +416,6 @@ class PathaoCourier implements
             ],
         ];
     }
-    
-    // ==================== CodInterface ====================
     
     public function getCodDetails(string $trackingId): Cod
     {
@@ -520,8 +498,6 @@ class PathaoCourier implements
         return $response['status'] === 200 || $response['status'] === 201;
     }
     
-    // ==================== WebhookInterface ====================
-    
     public function registerWebhook(string $url, array $events = []): bool
     {
         $this->authenticate();
@@ -576,18 +552,12 @@ class PathaoCourier implements
         return $this->mapper->mapApiToTracking($payload);
     }
     
-    // ==================== Private Methods ====================
-    
-    /**
-     * Authenticate and get access token.
-     */
     private function authenticate(): void
     {
         if ($this->accessToken && !$this->isTokenExpired()) {
             return;
         }
         
-        // Pathao API uses /aladdin/api/v1/issue-token endpoint
         $authEndpoint = $this->config->getAuthUrl() . '/aladdin/api/v1/issue-token';
         
         $response = $this->httpClient->post(
@@ -603,7 +573,6 @@ class PathaoCourier implements
             ]
         );
         
-        // Check for error in response (Pathao returns 200 even for errors)
         $responseData = $response['data'] ?? [];
         if (isset($responseData['error']) && $responseData['error'] === true) {
             $errorMessage = $responseData['message'] ?? 'Failed to authenticate with Pathao';
@@ -629,12 +598,9 @@ class PathaoCourier implements
             );
         }
         
-        // Pathao API returns token directly in response (not wrapped in data)
         $this->accessToken = $responseData['access_token'] ?? null;
         
-        // Also store refresh token for future use
         if (isset($responseData['refresh_token'])) {
-            // Could store this for token refresh functionality
         }
         
         if (!$this->accessToken) {
@@ -649,13 +615,8 @@ class PathaoCourier implements
         }
     }
     
-    /**
-     * Check if token is expired (simplified - implement proper JWT parsing if needed).
-     */
     private function isTokenExpired(): bool
     {
-        // In a real implementation, decode JWT and check expiration
-        // For now, assume token needs refresh
         return false;
     }
 }

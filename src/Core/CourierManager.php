@@ -15,11 +15,6 @@ use Millat\DeshCourier\DTO\Rate;
 use Millat\DeshCourier\DTO\Cod;
 use Millat\DeshCourier\Support\DtoNormalizer;
 
-/**
- * Main manager class for interacting with courier services.
- * 
- * This is the primary entry point for the SDK.
- */
 class CourierManager
 {
     private CourierRegistry $registry;
@@ -31,55 +26,33 @@ class CourierManager
         $this->resolver = $resolver ?? new CourierResolver($this->registry);
     }
     
-    /**
-     * Get the registry instance.
-     */
     public function getRegistry(): CourierRegistry
     {
         return $this->registry;
     }
     
-    /**
-     * Get the resolver instance.
-     */
     public function getResolver(): CourierResolver
     {
         return $this->resolver;
     }
     
-    /**
-     * Register a courier driver.
-     */
     public function register(CourierInterface $courier): self
     {
         $this->registry->register($courier);
         return $this;
     }
     
-    /**
-     * Register a courier factory (lazy loading).
-     */
     public function registerFactory(string $name, callable $factory): self
     {
         $this->registry->registerFactory($name, $factory);
         return $this;
     }
     
-    /**
-     * Get a courier instance.
-     */
     public function courier(string $name): CourierInterface
     {
         return $this->resolver->resolve($name);
     }
     
-    /**
-     * Create a shipment using the specified courier.
-     * 
-     * @param string $courierName
-     * @param Shipment|array<string, mixed> $shipment Shipment DTO or array
-     * @return Shipment
-     */
     public function createShipment(string $courierName, Shipment|array $shipment): Shipment
     {
         $courier = $this->resolver->resolve($courierName);
@@ -93,9 +66,6 @@ class CourierManager
         return $courier->createShipment($shipment);
     }
     
-    /**
-     * Track a shipment.
-     */
     public function track(string $courierName, string $trackingId): Tracking
     {
         $courier = $this->resolver->resolve($courierName);
@@ -109,13 +79,6 @@ class CourierManager
         return $courier->track($trackingId);
     }
     
-    /**
-     * Estimate delivery rate.
-     * 
-     * @param string $courierName
-     * @param Rate|array<string, mixed> $rateRequest Rate DTO or array
-     * @return Rate
-     */
     public function estimateRate(string $courierName, Rate|array $rateRequest): Rate
     {
         $rateRequest = DtoNormalizer::rate($rateRequest);
@@ -131,9 +94,6 @@ class CourierManager
         return $courier->estimateRate($rateRequest);
     }
     
-    /**
-     * Get COD details.
-     */
     public function getCodDetails(string $courierName, string $trackingId): Cod
     {
         $courier = $this->resolver->resolve($courierName);
@@ -147,17 +107,11 @@ class CourierManager
         return $courier->getCodDetails($trackingId);
     }
     
-    /**
-     * Get all registered courier names.
-     */
     public function getAvailableCouriers(): array
     {
         return $this->registry->getRegisteredNames();
     }
     
-    /**
-     * Find couriers that support specific capabilities.
-     */
     public function findCouriersByCapabilities(array $capabilities): array
     {
         return $this->resolver->findByCapabilities($capabilities);

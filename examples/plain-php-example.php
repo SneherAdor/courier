@@ -1,11 +1,5 @@
 <?php
 
-/**
- * Plain PHP Usage Example
- * 
- * This example demonstrates how to use Desh Courier SDK in plain PHP.
- */
-
 require __DIR__ . '/../vendor/autoload.php';
 
 use Millat\DeshCourier\DeshCourier;
@@ -14,7 +8,6 @@ use Millat\DeshCourier\DTO\Rate;
 
 echo "=== Desh Courier SDK - Plain PHP Example ===\n\n";
 
-// Example 1: Create a Shipment
 echo "1. Creating Shipment...\n";
 
 $shipment = new Shipment();
@@ -31,7 +24,7 @@ $shipment->senderAddress = 'Shop 456, Market Street';
 $shipment->senderCity = 'Dhaka';
 $shipment->senderZone = 'Dhanmondi';
 
-$shipment->weight = 1.5; // kg
+$shipment->weight = 1.5;
 $shipment->quantity = 1;
 $shipment->itemDescription = 'T-Shirt';
 $shipment->itemValue = 1500;
@@ -55,11 +48,9 @@ try {
     echo "✗ Error creating shipment: " . $e->getMessage() . "\n\n";
 }
 
-// Example 2: Track a Shipment
 echo "2. Tracking Shipment...\n";
 
 try {
-    // Use the tracking ID from above, or use a test ID
     $trackingId = $result->trackingId ?? 'TRACK123';
     $tracking = DeshCourier::track('pathao', $trackingId);
     
@@ -82,7 +73,6 @@ try {
     echo "✗ Error tracking shipment: " . $e->getMessage() . "\n\n";
 }
 
-// Example 3: Estimate Rate
 echo "3. Estimating Delivery Rate...\n";
 
 $rate = new Rate();
@@ -109,7 +99,6 @@ try {
     echo "✗ Error estimating rate: " . $e->getMessage() . "\n\n";
 }
 
-// Example 4: Check Capabilities
 echo "4. Checking Courier Capabilities...\n";
 
 $courier = DeshCourier::use('pathao');
@@ -121,7 +110,6 @@ foreach ($capabilities as $capability) {
 }
 echo "\n";
 
-// Example 5: Get COD Details
 echo "5. Getting COD Details...\n";
 
 if ($courier instanceof \Millat\DeshCourier\Contracts\CodInterface) {

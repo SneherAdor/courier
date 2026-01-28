@@ -2,9 +2,6 @@
 
 namespace Millat\DeshCourier\DTO;
 
-/**
- * Data Transfer Object for COD information.
- */
 class Cod
 {
     public ?string $trackingId = null;
@@ -15,15 +12,10 @@ class Cod
     public ?bool $isSettled = null;
     public ?\DateTimeInterface $settledAt = null;
     public ?string $settlementReference = null;
-    public ?string $status = null; // 'pending', 'collected', 'settled', 'failed'
+    public ?string $status = null;
     public ?\DateTimeInterface $collectedAt = null;
     public ?string $collectionNote = null;
     
-    /**
-     * Constructor with optional mass assignment from array.
-     * 
-     * @param array<string, mixed> $data Optional array of data to populate properties
-     */
     public function __construct(array $data = [])
     {
         if (!empty($data)) {
@@ -31,12 +23,6 @@ class Cod
         }
     }
     
-    /**
-     * Fill properties from array.
-     * 
-     * @param array<string, mixed> $data
-     * @return self
-     */
     public function fill(array $data): self
     {
         $dateFields = ['settledAt', 'collectedAt'];
@@ -54,20 +40,11 @@ class Cod
         return $this;
     }
     
-    /**
-     * Create from array (static factory method).
-     * 
-     * @param array<string, mixed> $data
-     * @return self
-     */
     public static function fromArray(array $data): self
     {
         return new self($data);
     }
     
-    /**
-     * Convert to array.
-     */
     public function toArray(): array
     {
         $data = [];

@@ -2,9 +2,6 @@
 
 namespace Millat\DeshCourier\Drivers\Pathao;
 
-/**
- * Configuration class for Pathao courier.
- */
 class PathaoConfig
 {
     private string $clientId;
@@ -13,7 +10,7 @@ class PathaoConfig
     private ?string $password = null;
     private string $apiUrl;
     private string $authUrl;
-    private ?string $environment = null; // 'sandbox' or 'production'
+    private ?string $environment = null;
     
     public function __construct(array $config = [])
     {
@@ -23,7 +20,6 @@ class PathaoConfig
         $this->password = $config['password'] ?? null;
         $this->environment = $config['environment'] ?? 'production';
         
-        // Set API URLs based on environment
         if ($this->environment === 'sandbox') {
             $this->apiUrl = $config['api_url'] ?? 'https://courier-api-sandbox.pathao.com';
             $this->authUrl = $config['auth_url'] ?? 'https://courier-api-sandbox.pathao.com';

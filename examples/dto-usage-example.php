@@ -1,9 +1,5 @@
 <?php
 
-/**
- * Example: Using DTO Objects (IDE autocomplete, type safety)
- */
-
 require __DIR__ . '/../vendor/autoload.php';
 
 use Millat\DeshCourier\DeshCourier;
@@ -12,7 +8,6 @@ use Millat\DeshCourier\DTO\Rate;
 
 echo "=== DTO Usage Example ===\n\n";
 
-// Create shipment using DTO object (IDE autocomplete works!)
 $shipment = new Shipment();
 $shipment->recipientName = 'John Doe';
 $shipment->recipientPhone = '01712345678';
@@ -25,10 +20,9 @@ $shipment->senderAddress = 'Shop 456, Market Street';
 $shipment->senderCity = 'Dhaka';
 $shipment->weight = 1.5;
 $shipment->codAmount = 1500;
-$shipment->serviceType = 'next_day'; // IDE autocomplete suggests: 'same_day', 'next_day', 'express', 'standard'
+$shipment->serviceType = 'next_day';
 $shipment->itemDescription = 'Electronics';
 
-// Pass DTO object directly
 try {
     $result = DeshCourier::createShipment('pathao', $shipment);
     echo "✓ Shipment created with DTO\n";
@@ -38,7 +32,6 @@ try {
     echo "✗ Error: " . $e->getMessage() . "\n\n";
 }
 
-// Or use constructor with array (mass assignment)
 $shipment2 = new Shipment([
     'recipientName' => 'Jane Smith',
     'recipientPhone' => '01711111111',
@@ -56,7 +49,6 @@ echo "✓ DTO created with constructor mass assignment\n";
 echo "  Recipient: " . $shipment2->recipientName . "\n";
 echo "  Service Type (default): " . $shipment2->serviceType . "\n\n";
 
-// Estimate rate using DTO
 $rate = new Rate();
 $rate->fromCity = 'Dhaka';
 $rate->toCity = 'Sylhet';

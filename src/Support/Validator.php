@@ -4,24 +4,6 @@ namespace Millat\DeshCourier\Support;
 
 use Millat\DeshCourier\Exceptions\ValidationException;
 
-/**
- * Laravel-style validator for courier parameters.
- * 
- * Supports common validation rules:
- * - required
- * - string
- * - numeric
- * - integer
- * - float
- * - email
- * - phone
- * - min:value
- * - max:value
- * - in:value1,value2,...
- * - regex:pattern
- * - array
- * - boolean
- */
 class Validator
 {
     protected array $data;
@@ -31,22 +13,8 @@ class Validator
     protected array $errors = [];
     protected ?string $courierName = null;
     
-    /**
-     * Flag to track if exception handler has been registered.
-     * 
-     * @var bool
-     */
     private static bool $exceptionHandlerRegistered = false;
     
-    /**
-     * Create a new validator instance.
-     * 
-     * @param array<string, mixed> $data Data to validate
-     * @param array<string, string|array> $rules Validation rules (field => rules)
-     * @param array<string, string> $messages Custom error messages (field.rule => message)
-     * @param array<string, string> $descriptions Field descriptions (field => description)
-     * @param string|null $courierName Optional courier name for error messages
-     */
     public function __construct(
         array $data,
         array $rules,
@@ -60,19 +28,11 @@ class Validator
         $this->descriptions = $descriptions;
         $this->courierName = $courierName;
         
-        // Automatically register exception handler for browser display (only once)
         self::registerExceptionHandler();
     }
     
-    /**
-     * Register exception handler for browser and CLI display of ValidationException.
-     * Only registers once, even if called multiple times.
-     * 
-     * @return void
-     */
     public static function registerExceptionHandler(): void
     {
-        // Only register once
         if (self::$exceptionHandlerRegistered) {
             return;
         }
@@ -80,18 +40,14 @@ class Validator
         $isCli = self::isCliContext();
         
         set_exception_handler(function ($exception) use ($isCli) {
-            // Handle ValidationException specially
             if ($exception instanceof ValidationException) {
                 $message = $exception->getMessage();
                 
                 if ($isCli) {
-                    // CLI: Output formatted message and exit cleanly (no stack trace)
                     echo $message . "\n";
                     exit(1);
                 } else {
-                    // Browser: Check if message contains complete HTML document
                     if (strpos($message, '<!DOCTYPE html') === 0 || strpos($message, '<html') === 0) {
-                        // ValidationException message already contains complete HTML document
                         http_response_code(400);
                         echo $message;
                         exit(1);
@@ -99,8 +55,6 @@ class Validator
                 }
             }
             
-            // For other exceptions, use default handler
-            // This allows the default PHP error handler to work normally
             restore_exception_handler();
             throw $exception;
         });
@@ -108,22 +62,11 @@ class Validator
         self::$exceptionHandlerRegistered = true;
     }
     
-    /**
-     * Check if the current context is CLI (command line interface).
-     * 
-     * @return bool
-     */
     private static function isCliContext(): bool
     {
         return in_array(PHP_SAPI, ['cli', 'phpdbg'], true);
     }
     
-    /**
-     * Validate the data.
-     * 
-     * @return bool
-     * @throws ValidationException
-     */
     public function validate(): bool
     {
         $this->errors = [];
@@ -147,12 +90,6 @@ class Validator
         return true;
     }
     
-    /**
-     * Validate a single field.
-     * 
-     * @param string $field
-     * @param string|array $rules
-     */
     protected function validateField(string $field, string|array $rules): void
     {
         if (is_string($rules)) {
@@ -161,7 +98,6 @@ class Validator
         
         $value = $this->data[$field] ?? null;
         
-        // Check if 'required' rule exists
         $isRequired = false;
         $ruleNames = [];
         foreach ($rules as $rule) {
@@ -177,7 +113,6 @@ class Validator
             }
         }
         
-        // Skip validation for optional fields that are empty (except 'required' rule itself)
         if (!$isRequired && ($value === null || $value === '')) {
             return;
         }
@@ -189,7 +124,6 @@ class Validator
                 continue;
             }
             
-            // Handle rules with parameters (e.g., min:5, max:10)
             $ruleParts = explode(':', $rule, 2);
             $ruleName = $ruleParts[0];
             $ruleValue = $ruleParts[1] ?? null;
@@ -198,14 +132,6 @@ class Validator
         }
     }
     
-    /**
-     * Apply a validation rule.
-     * 
-     * @param string $field
-     * @param string $ruleName
-     * @param mixed $value
-     * @param string|null $ruleValue
-     */
     protected function applyRule(string $field, string $ruleName, mixed $value, ?string $ruleValue): void
     {
         switch ($ruleName) {
@@ -300,13 +226,6 @@ class Validator
         }
     }
     
-    /**
-     * Add an error for a field.
-     * 
-     * @param string $field
-     * @param string $rule
-     * @param string $defaultMessage
-     */
     protected function addError(string $field, string $rule, string $defaultMessage): void
     {
         $key = "{$field}.{$rule}";
@@ -319,61 +238,37 @@ class Validator
         $this->errors[$field][] = $message;
     }
     
-    /**
-     * Get validation errors.
-     * 
-     * @return array<string, array<string>>
-     */
     public function getErrors(): array
     {
         return $this->errors;
     }
     
-    /**
-     * Check if validation has errors.
-     * 
-     * @return bool
-     */
     public function fails(): bool
     {
         return !empty($this->errors);
     }
     
-    /**
-     * Check if validation passes.
-     * 
-     * @return bool
-     */
     public function passes(): bool
     {
         return empty($this->errors);
     }
     
-    /**
-     * Build a user-friendly error message from validation errors.
-     * Formats message appropriately for CLI, browser, or API contexts.
-     * 
-     * @return string
-     */
     private function buildErrorMessage(): string
     {
         $errorCount = count($this->errors);
         $courierName = $this->courierName ?? 'unknown';
         $isCli = self::isCliContext();
         
-        // Build list of missing/invalid fields with descriptions
         $fieldList = [];
         foreach ($this->errors as $field => $fieldErrors) {
             $fieldLabel = $this->descriptions[$field] ?? $field;
             $errorText = implode(', ', $fieldErrors);
             
-            // Check if description exists and is different from field name (more descriptive)
             $hasDescription = isset($this->descriptions[$field]) && 
                              $this->descriptions[$field] !== $field &&
                              strlen($this->descriptions[$field]) > strlen($field);
             
             if ($isCli) {
-                // CLI: Use ANSI color codes for terminal
                 if ($hasDescription) {
                     $fieldList[] = sprintf(
                         "\033[31m  ⚠  \033[1m%s\033[0m\033[31m: %s\033[0m\n     \033[36mℹ  %s\033[0m",
@@ -389,7 +284,6 @@ class Validator
                     );
                 }
             } else {
-                // Browser: Use HTML with professional styling
                 if ($hasDescription) {
                     $fieldList[] = sprintf(
                         '<div style="margin: 8px 0; padding: 12px; background-color: #FFF3E0; border-left: 4px solid #FF9800; border-radius: 4px;">' .
@@ -420,9 +314,7 @@ class Validator
             }
         }
         
-        // Create eye-catching, professional error message with visual emphasis
         if ($isCli) {
-            // CLI formatting with ANSI colors
             $separator = "\033[1;33m" . str_repeat('═', 60) . "\033[0m";
             $header = sprintf(
                 "\033[1;33m⚠️  MISSING REQUIRED INFORMATION FOR %s COURIER\033[0m",
@@ -437,7 +329,6 @@ class Validator
                 implode("\n", $fieldList)
             );
         } else {
-            // Browser formatting with complete HTML document
             $content = sprintf(
                 '<div style="font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; ' .
                 'max-width: 800px; margin: 20px auto; padding: 0; background: #fff;">' .
@@ -459,7 +350,6 @@ class Validator
                 implode('', $fieldList)
             );
             
-            // Wrap in complete HTML document for direct browser output
             $message = sprintf(
                 '<!DOCTYPE html>' .
                 '<html lang="en">' .
@@ -481,34 +371,22 @@ class Validator
         return $message;
     }
     
-    /**
-     * Build a user-friendly description/help message.
-     * Formats message appropriately for CLI, browser, or API contexts.
-     * 
-     * @param string $title The title/header of the description
-     * @param array<string, string> $items Array of field => description pairs
-     * @param string|null $subtitle Optional subtitle or additional context
-     * @return string
-     */
     public function buildDescriptionMessage(string $title, array $items, ?string $subtitle = null): string
     {
         $courierName = $this->courierName ?? 'unknown';
         $isCli = $this->isCliContext();
         
-        // Build list of fields with descriptions
         $itemList = [];
         foreach ($items as $field => $description) {
             $fieldLabel = $this->descriptions[$field] ?? $field;
             
             if ($isCli) {
-                // CLI: Use ANSI color codes for terminal (blue/cyan theme)
                 $itemList[] = sprintf(
                     "\033[36m  ℹ  \033[1m%s\033[0m\033[36m: %s\033[0m",
                     $fieldLabel,
                     $description
                 );
             } else {
-                // Browser: Use HTML with professional styling (blue/info theme)
                 $itemList[] = sprintf(
                     '<div style="margin: 8px 0; padding: 12px; background-color: #E3F2FD; border-left: 4px solid #2196F3; border-radius: 4px; transition: background-color 0.2s;">' .
                     '<span style="color: #1976D2; font-weight: 600; font-size: 14px;">ℹ</span> ' .
@@ -521,9 +399,7 @@ class Validator
             }
         }
         
-        // Create eye-catching, professional description message
         if ($isCli) {
-            // CLI formatting with ANSI colors (blue/cyan theme)
             $separator = "\033[1;36m" . str_repeat('═', 70) . "\033[0m";
             $header = sprintf(
                 "\033[1;36mℹ️  %s\033[0m",
@@ -545,7 +421,6 @@ class Validator
             
             $message .= implode("\n", $itemList) . "\n";
         } else {
-            // Browser formatting with HTML (blue/info theme)
             $subtitleHtml = $subtitle ? sprintf(
                 '<div style="color: #424242; font-size: 14px; margin-bottom: 15px; padding: 10px; ' .
                 'background-color: #F5F5F5; border-radius: 4px; line-height: 1.6;">%s</div>',
@@ -576,7 +451,6 @@ class Validator
                 implode('', $itemList)
             );
             
-            // Wrap in complete HTML document for direct browser output
             $message = sprintf(
                 '<!DOCTYPE html>' .
                 '<html lang="en">' .

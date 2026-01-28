@@ -2,16 +2,8 @@
 
 namespace Millat\DeshCourier\Core;
 
-/**
- * Maps courier-specific statuses to normalized canonical statuses.
- * 
- * This ensures all couriers use the same status vocabulary.
- */
 class StatusMapper
 {
-    /**
-     * Canonical status constants.
-     */
     public const CREATED = 'CREATED';
     public const PICKED = 'PICKED';
     public const IN_TRANSIT = 'IN_TRANSIT';
@@ -21,9 +13,6 @@ class StatusMapper
     public const RETURNED = 'RETURNED';
     public const CANCELLED = 'CANCELLED';
     
-    /**
-     * All canonical statuses.
-     */
     public static function getCanonicalStatuses(): array
     {
         return [
@@ -38,27 +27,14 @@ class StatusMapper
         ];
     }
     
-    /**
-     * Map a courier-specific status to canonical status.
-     * 
-     * Drivers should provide their own mapping logic, but this provides
-     * a default implementation that can be extended.
-     * 
-     * @param string $courierStatus Raw status from courier
-     * @param array<string, string> $customMapping Custom mapping array
-     * @return string Canonical status
-     */
     public static function map(string $courierStatus, array $customMapping = []): string
     {
-        // Use custom mapping if provided
         if (isset($customMapping[$courierStatus])) {
             return $customMapping[$courierStatus];
         }
         
-        // Default case-insensitive mapping
         $normalized = strtoupper(trim($courierStatus));
         
-        // Common patterns
         $patterns = [
             '/CREATED|PENDING|BOOKED|CONFIRMED/i' => self::CREATED,
             '/PICKED|PICKUP|COLLECTED/i' => self::PICKED,
@@ -76,13 +52,9 @@ class StatusMapper
             }
         }
         
-        // Default to CREATED if no match
         return self::CREATED;
     }
     
-    /**
-     * Check if a status is terminal (final state).
-     */
     public static function isTerminal(string $status): bool
     {
         return in_array($status, [
@@ -93,9 +65,6 @@ class StatusMapper
         ]);
     }
     
-    /**
-     * Get status display name.
-     */
     public static function getDisplayName(string $status): string
     {
         $names = [

@@ -2,20 +2,13 @@
 
 namespace Millat\DeshCourier\DTO;
 
-/**
- * Data Transfer Object for shipment information.
- * 
- * This DTO normalizes shipment data across all couriers.
- */
 class Shipment
 {
-    // Core shipment data
     public ?string $trackingId = null;
     public ?string $courierName = null;
-    public ?string $externalOrderId = null; // Your system's order ID
-    public ?string $orderSource = null; // 'facebook', 'website', 'pos', 'api'
+    public ?string $externalOrderId = null;
+    public ?string $orderSource = null;
     
-    // Sender information
     public ?string $senderName = null;
     public ?string $senderPhone = null;
     public ?string $senderEmail = null;
@@ -24,7 +17,6 @@ class Shipment
     public ?string $senderZone = null;
     public ?string $senderPostalCode = null;
     
-    // Recipient information
     public ?string $recipientName = null;
     public ?string $recipientPhone = null;
     public ?string $recipientEmail = null;
@@ -34,36 +26,26 @@ class Shipment
     public ?string $recipientPostalCode = null;
     public ?string $recipientLandmark = null;
     
-    // Shipment details
-    public ?string $serviceType = 'standard'; // 'same_day', 'next_day', 'express', 'standard'
-    public ?float $weight = null; // in kg
+    public ?string $serviceType = 'standard';
+    public ?float $weight = null;
     public ?int $quantity = 1;
     public ?string $itemDescription = null;
-    public ?float $itemValue = null; // Declared value
+    public ?float $itemValue = null;
     
-    // COD information
     public ?float $codAmount = null;
-    public ?string $codType = null; // 'full', 'partial'
+    public ?string $codType = null;
     
-    // Delivery preferences
     public ?string $deliveryInstruction = null;
     public ?string $preferredDeliveryTime = null;
     
-    // Status
-    public ?string $status = null; // Normalized status
-    public ?string $courierStatus = null; // Raw courier status
+    public ?string $status = null;
+    public ?string $courierStatus = null;
     
-    // Metadata
     public ?string $labelUrl = null;
-    public ?array $courierData = null; // Courier-specific data
+    public ?array $courierData = null;
     public ?\DateTimeInterface $createdAt = null;
     public ?\DateTimeInterface $updatedAt = null;
     
-    /**
-     * Constructor with optional mass assignment from array.
-     * 
-     * @param array<string, mixed> $data Optional array of data to populate properties
-     */
     public function __construct(array $data = [])
     {
         if (!empty($data)) {
@@ -71,17 +53,10 @@ class Shipment
         }
     }
     
-    /**
-     * Fill properties from array.
-     * 
-     * @param array<string, mixed> $data
-     * @return self
-     */
     public function fill(array $data): self
     {
         foreach ($data as $key => $value) {
             if (property_exists($this, $key)) {
-                // Handle DateTime conversion
                 if (in_array($key, ['createdAt', 'updatedAt']) && is_string($value)) {
                     $this->$key = new \DateTimeImmutable($value);
                 } else {
@@ -93,20 +68,11 @@ class Shipment
         return $this;
     }
     
-    /**
-     * Create from array (static factory method).
-     * 
-     * @param array<string, mixed> $data
-     * @return self
-     */
     public static function fromArray(array $data): self
     {
         return new self($data);
     }
     
-    /**
-     * Convert to array.
-     */
     public function toArray(): array
     {
         $data = [];
@@ -122,9 +88,6 @@ class Shipment
         return $data;
     }
     
-    /**
-     * Validate required fields for shipment creation.
-     */
     public function validateForCreation(): array
     {
         $errors = [];

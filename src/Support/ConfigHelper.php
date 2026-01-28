@@ -2,9 +2,6 @@
 
 namespace Millat\DeshCourier\Support;
 
-/**
- * Configuration helper that works across plain PHP, Laravel, and WordPress.
- */
 class ConfigHelper
 {
     private array $config = [];
@@ -16,12 +13,8 @@ class ConfigHelper
         $this->loadFromWordPress();
     }
     
-    /**
-     * Load configuration from environment variables.
-     */
     private function loadFromEnvironment(): void
     {
-        // Load from .env file if it exists
         $envFile = getcwd() . '/.env';
         if (file_exists($envFile)) {
             $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -41,7 +34,6 @@ class ConfigHelper
             }
         }
         
-        // Also check actual environment variables
         foreach ($_ENV as $key => $value) {
             if (strpos($key, 'DESH_COURIER_') === 0) {
                 $configKey = strtolower(str_replace('DESH_COURIER_', '', $key));
@@ -50,9 +42,6 @@ class ConfigHelper
         }
     }
     
-    /**
-     * Load configuration from Laravel config.
-     */
     private function loadFromLaravel(): void
     {
         if (function_exists('config')) {
@@ -63,9 +52,6 @@ class ConfigHelper
         }
     }
     
-    /**
-     * Load configuration from WordPress constants.
-     */
     private function loadFromWordPress(): void
     {
         if (defined('DESH_COURIER_CONFIG')) {
@@ -76,9 +62,6 @@ class ConfigHelper
         }
     }
     
-    /**
-     * Set nested config value (e.g., 'pathao.client_id' => 'value').
-     */
     private function setNested(string $key, $value): void
     {
         $keys = explode('.', $key);
@@ -94,13 +77,6 @@ class ConfigHelper
         $config = $value;
     }
     
-    /**
-     * Get configuration value.
-     * 
-     * @param string|null $key Dot-notation key (e.g., 'pathao.client_id')
-     * @param mixed $default
-     * @return mixed
-     */
     public function get(?string $key = null, $default = null)
     {
         if ($key === null) {
@@ -120,9 +96,6 @@ class ConfigHelper
         return $value;
     }
     
-    /**
-     * Check if configuration key exists.
-     */
     public function has(string $key): bool
     {
         $keys = explode('.', $key);
@@ -138,9 +111,6 @@ class ConfigHelper
         return true;
     }
     
-    /**
-     * Set configuration value.
-     */
     public function set(string $key, $value): void
     {
         $this->setNested($key, $value);
