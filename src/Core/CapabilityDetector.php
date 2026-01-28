@@ -24,6 +24,7 @@ class CapabilityDetector
         'metadata.cities',
         'metadata.zones',
         'metadata.slas',
+        'store.list',
     ];
     
     public static function supports(CourierInterface $courier, string $capability): bool
