@@ -2,18 +2,19 @@
 
 namespace Millat\DeshCourier\Core;
 
-use Millat\DeshCourier\Contracts\CourierInterface;
-use Millat\DeshCourier\Contracts\ShipmentInterface;
-use Millat\DeshCourier\Contracts\TrackingInterface;
-use Millat\DeshCourier\Contracts\RateInterface;
-use Millat\DeshCourier\Contracts\CodInterface;
-use Millat\DeshCourier\Contracts\WebhookInterface;
-use Millat\DeshCourier\Contracts\MetadataInterface;
+use Millat\DeshCourier\DTO\Cod;
+use Millat\DeshCourier\DTO\Rate;
 use Millat\DeshCourier\DTO\Shipment;
 use Millat\DeshCourier\DTO\Tracking;
-use Millat\DeshCourier\DTO\Rate;
-use Millat\DeshCourier\DTO\Cod;
 use Millat\DeshCourier\Support\DtoNormalizer;
+use Millat\DeshCourier\Contracts\CodInterface;
+use Millat\DeshCourier\Contracts\RateInterface;
+use Millat\DeshCourier\Contracts\StoreInterface;
+use Millat\DeshCourier\Contracts\CourierInterface;
+use Millat\DeshCourier\Contracts\WebhookInterface;
+use Millat\DeshCourier\Contracts\MetadataInterface;
+use Millat\DeshCourier\Contracts\ShipmentInterface;
+use Millat\DeshCourier\Contracts\TrackingInterface;
 
 class CourierManager
 {
@@ -92,6 +93,19 @@ class CourierManager
         }
         
         return $courier->estimateRate($rateRequest);
+    }
+    
+    public function getStores(string $courierName, array $filters = []): array
+    {
+        $courier = $this->resolver->resolve($courierName);
+        
+        if (!$courier instanceof StoreInterface) {
+            throw new \RuntimeException(
+                "Courier '{$courierName}' does not support store operations."
+            );
+        }
+        
+        return $courier->getStores($filters);
     }
     
     public function getCodDetails(string $courierName, string $trackingId): Cod

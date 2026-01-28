@@ -12,7 +12,7 @@ class Rate
     public ?string $serviceType = null;
     public ?float $codAmount = null;
     public ?float $itemValue = null;
-    
+    public ?int $storeId = null;
     public ?float $deliveryCharge = null;
     public ?float $codCharge = null;
     public ?float $totalCharge = null;
@@ -22,6 +22,9 @@ class Rate
     
     public ?array $breakdown = null;
     public ?string $courierName = null;
+    public ?array $courierData = null;
+    public ?string $deliveryType = null;
+
     
     public function __construct(array $data = [])
     {

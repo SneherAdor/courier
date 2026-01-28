@@ -6,6 +6,7 @@ use Millat\DeshCourier\DTO\Rate;
 use Millat\DeshCourier\Support\DtoNormalizer;
 use Millat\DeshCourier\Support\Validate;
 use Millat\DeshCourier\Exceptions\ApiException;
+use Millat\DeshCourier\Exceptions\ValidationException;
 
 class RateHandler extends PathaoHandler
 {
@@ -15,7 +16,7 @@ class RateHandler extends PathaoHandler
         
         $this->validateRateRequest($rateRequest);
         
-        $response = $this->post('aladdin/api/v1/rates', [
+        $response = $this->post('aladdin/api/v1/merchant/price-plan', [
             'json' => $this->getMapper()->mapRateToApi($rateRequest),
         ]);
         
@@ -50,16 +51,11 @@ class RateHandler extends PathaoHandler
         $this->validate(
             $rateRequest,
             [
-                'weight' => 'required|numeric|min:0.1|max:50',
-                'millat' => 'required|numeric|min:0',
-            ],
-            [
-                'weight.required' => 'Weight is required.',
-                'weight.numeric' => 'Weight must be a number.',
-            ],
-            [
-                'weight' => 'Package weight in kilograms (between 0.1 and 50 kg). If unsure, use 1 kg.',
-                'millat' => 'Millat is required and must be a number. If unsure, use 0.',
+                'storeId' => 'required|integer',
+                'weight' => 'required|float|min:0.5|max:10',
+                'toCity' => 'required|integer',
+                'toZone' => 'required|integer',
+                'deliveryType' => 'required|integer',
             ]
         );
     }

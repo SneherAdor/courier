@@ -8,6 +8,7 @@ use Millat\DeshCourier\Contracts\TrackingInterface;
 use Millat\DeshCourier\Contracts\RateInterface;
 use Millat\DeshCourier\Contracts\CodInterface;
 use Millat\DeshCourier\Contracts\WebhookInterface;
+use Millat\DeshCourier\Contracts\StoreInterface;
 use Millat\DeshCourier\DTO\Shipment;
 use Millat\DeshCourier\DTO\Tracking;
 use Millat\DeshCourier\DTO\Rate;
@@ -20,6 +21,7 @@ use Millat\DeshCourier\Drivers\Pathao\Handlers\RateHandler;
 use Millat\DeshCourier\Drivers\Pathao\Handlers\CodHandler;
 use Millat\DeshCourier\Drivers\Pathao\Handlers\WebhookHandler;
 use Millat\DeshCourier\Drivers\Pathao\Handlers\MetadataHandler;
+use Millat\DeshCourier\Drivers\Pathao\Handlers\StoreHandler;
 use Millat\DeshCourier\Drivers\Pathao\Services\AuthenticationService;
 use Millat\DeshCourier\Drivers\Pathao\Concerns\HasAuthentication;
 
@@ -29,7 +31,8 @@ class PathaoCourier implements
     TrackingInterface,
     RateInterface,
     CodInterface,
-    WebhookInterface
+    WebhookInterface,
+    StoreInterface
 {
     use HasAuthentication;
 
@@ -43,6 +46,7 @@ class PathaoCourier implements
     protected CodHandler $codHandler;
     protected WebhookHandler $webhookHandler;
     protected MetadataHandler $metadataHandler;
+    protected StoreHandler $storeHandler;
 
     public function __construct(PathaoConfig $config, ?HttpClient $httpClient = null)
     {
@@ -81,6 +85,7 @@ class PathaoCourier implements
             'cod.settlement',
             'metadata.cities',
             'metadata.zones',
+            'store.list',
         ];
     }
 
@@ -184,6 +189,21 @@ class PathaoCourier implements
         return $this->webhookHandler->parse($payload);
     }
 
+    public function getStores(array $filters = []): array
+    {
+        return $this->withAuthentication(fn() => $this->storeHandler->getStores($filters));
+    }
+
+    public function getStore(int $storeId): ?array
+    {
+        return $this->withAuthentication(fn() => $this->storeHandler->getStore($storeId));
+    }
+
+    public function getDefaultStore(): ?array
+    {
+        return $this->withAuthentication(fn() => $this->storeHandler->getDefaultStore());
+    }
+
     protected function validateConfiguration(): void
     {
         if (empty($this->config->getClientId()) || empty($this->config->getClientSecret())) {
@@ -204,6 +224,7 @@ class PathaoCourier implements
         $this->codHandler = new CodHandler($this->config, $this->httpClient, $this->mapper);
         $this->webhookHandler = new WebhookHandler($this->config, $this->httpClient, $this->mapper);
         $this->metadataHandler = new MetadataHandler($this->config, $this->httpClient, $this->mapper);
+        $this->storeHandler = new StoreHandler($this->config, $this->httpClient, $this->mapper);
     }
 
     protected function withAuthentication(\Closure $callback): mixed
@@ -233,5 +254,6 @@ class PathaoCourier implements
         $this->codHandler->setAccessToken($token);
         $this->webhookHandler->setAccessToken($token);
         $this->metadataHandler->setAccessToken($token);
+        $this->storeHandler->setAccessToken($token);
     }
 }

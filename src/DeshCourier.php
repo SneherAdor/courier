@@ -90,4 +90,9 @@ class DeshCourier
     {
         return self::getManager()->estimateRate($courierName, $rateRequest);
     }
+
+    public static function getStores(string $courierName, array $filters = []): array
+    {
+        return self::getManager()->getStores($courierName, $filters);
+    }
 }

@@ -20,10 +20,14 @@ DeshCourier::registerFactory('pathao', function () {
     ]));
 });
 
+dd(DeshCourier::getStores('pathao'));
+
 $rate = DeshCourier::estimateRate('pathao', [
-    'fromCity' => 'Dhaka',
-    'toCity' => 'Chittagong',
-    'codAmount' => 15000,
+    'storeId' => 149718,
+    'deliveryType' => 48,
+    'weight' => 1.5,
+    'toCity' => 1,
+    'toZone' => 1,
 ]);
 
 dd($rate);

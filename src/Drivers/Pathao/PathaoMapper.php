@@ -110,13 +110,12 @@ class PathaoMapper
     public function mapRateToApi(Rate $rate): array
     {
         return [
-            'store_id' => $rate->courierData['store_id'] ?? null,
-            'item_type' => 'Parcel',
-            'delivery_type' => $this->mapServiceType($rate->serviceType),
-            'item_weight' => $rate->weight,
-            'recipient_city' => $rate->toCity,
-            'recipient_zone' => $rate->toZone,
-            'amount_collection' => $rate->codAmount,
+            'store_id' => (int) $rate->storeId,
+            'item_type' => 2, // 1 for Document, 2 for Parcel
+            'delivery_type' => (int) $rate->deliveryType,
+            'item_weight' => (float) $rate->weight,
+            'recipient_city' => (int) $rate->toCity,
+            'recipient_zone' => (int) $rate->toZone,
         ];
     }
     
@@ -124,20 +123,44 @@ class PathaoMapper
     {
         $rate = $existing;
         
-        $rate->deliveryCharge = $apiData['delivery_charge'] ?? null;
-        $rate->codCharge = $apiData['cod_charge'] ?? null;
-        $rate->totalCharge = ($rate->deliveryCharge ?? 0) + ($rate->codCharge ?? 0);
-        $rate->estimatedDays = $apiData['estimated_days'] ?? null;
+        // Handle nested data structure (response['data']['data'] or response['data'])
+        $data = $apiData['data'] ?? $apiData;
+        
+        // Map from new API response format
+        $price = (float) ($data['price'] ?? 0);
+        $discount = (float) ($data['discount'] ?? 0);
+        $promoDiscount = (float) ($data['promo_discount'] ?? 0);
+        $additionalCharge = (float) ($data['additional_charge'] ?? 0);
+        $finalPrice = (float) ($data['final_price'] ?? $price);
+        
+        // Calculate COD charge if COD amount is provided
+        $codCharge = 0;
+        if ($rate->codAmount && $rate->codAmount > 0 && isset($data['cod_percentage'])) {
+            $codCharge = $rate->codAmount * (float) $data['cod_percentage'];
+        }
+        
+        $rate->deliveryCharge = $finalPrice;
+        $rate->codCharge = $codCharge;
+        $rate->totalCharge = $finalPrice + $codCharge;
         $rate->courierName = 'pathao';
         $rate->breakdown = [
-            'delivery_charge' => $rate->deliveryCharge,
-            'cod_charge' => $rate->codCharge,
+            'price' => $price,
+            'discount' => $discount,
+            'promo_discount' => $promoDiscount,
+            'additional_charge' => $additionalCharge,
+            'final_price' => $finalPrice,
+            'cod_charge' => $codCharge,
             'total' => $rate->totalCharge,
+            'plan_id' => $data['plan_id'] ?? null,
+            'cod_enabled' => (bool) ($data['cod_enabled'] ?? false),
+            'cod_percentage' => isset($data['cod_percentage']) ? (float) $data['cod_percentage'] : null,
         ];
         
-        if (isset($apiData['estimated_delivery_date'])) {
-            $rate->estimatedDeliveryDate = new \DateTimeImmutable($apiData['estimated_delivery_date']);
+        // Store raw API response in courierData for reference
+        if (!is_array($rate->courierData)) {
+            $rate->courierData = [];
         }
+        $rate->courierData['api_response'] = $data;
         
         return $rate;
     }
@@ -163,6 +186,25 @@ class PathaoMapper
         }
         
         return $cod;
+    }
+    
+    public function mapApiToStore(array $apiData): array
+    {
+        return [
+            'store_id' => isset($apiData['store_id']) ? (int) $apiData['store_id'] : null,
+            'store_name' => $apiData['store_name'] ?? null,
+            'store_address' => $apiData['store_address'] ?? null,
+            'is_active' => isset($apiData['is_active']) ? ((int) $apiData['is_active'] === 1) : false,
+            'city_id' => isset($apiData['city_id']) ? (int) $apiData['city_id'] : null,
+            'zone_id' => isset($apiData['zone_id']) ? (int) $apiData['zone_id'] : null,
+            'hub_id' => isset($apiData['hub_id']) ? (int) $apiData['hub_id'] : null,
+            'is_default_store' => isset($apiData['is_default_store']) 
+                ? ((int) $apiData['is_default_store'] === 1) 
+                : false,
+            'is_default_return_store' => isset($apiData['is_default_return_store']) 
+                ? ((int) $apiData['is_default_return_store'] === 1) 
+                : false,
+        ];
     }
     
     private function mapServiceType(?string $serviceType): int
