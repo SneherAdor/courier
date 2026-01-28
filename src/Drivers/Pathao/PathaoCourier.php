@@ -12,12 +12,16 @@ use Millat\DeshCourier\DTO\Shipment;
 use Millat\DeshCourier\DTO\Tracking;
 use Millat\DeshCourier\DTO\Rate;
 use Millat\DeshCourier\DTO\Cod;
-use Millat\DeshCourier\Core\StatusMapper;
 use Millat\DeshCourier\Support\HttpClient;
-use Millat\DeshCourier\Support\DtoNormalizer;
-use Millat\DeshCourier\Exceptions\ApiException;
 use Millat\DeshCourier\Exceptions\InvalidConfigurationException;
-use Millat\DeshCourier\Support\Validate;
+use Millat\DeshCourier\Drivers\Pathao\Handlers\ShipmentHandler;
+use Millat\DeshCourier\Drivers\Pathao\Handlers\TrackingHandler;
+use Millat\DeshCourier\Drivers\Pathao\Handlers\RateHandler;
+use Millat\DeshCourier\Drivers\Pathao\Handlers\CodHandler;
+use Millat\DeshCourier\Drivers\Pathao\Handlers\WebhookHandler;
+use Millat\DeshCourier\Drivers\Pathao\Handlers\MetadataHandler;
+use Millat\DeshCourier\Drivers\Pathao\Services\AuthenticationService;
+use Millat\DeshCourier\Drivers\Pathao\Concerns\HasAuthentication;
 
 class PathaoCourier implements
     CourierInterface,
@@ -27,39 +31,40 @@ class PathaoCourier implements
     CodInterface,
     WebhookInterface
 {
-    use Validate;
+    use HasAuthentication;
 
-    private PathaoConfig $config;
-    private HttpClient $httpClient;
-    private PathaoMapper $mapper;
-    private ?string $accessToken = null;
-    
+    protected PathaoConfig $config;
+    protected HttpClient $httpClient;
+    protected PathaoMapper $mapper;
+    protected AuthenticationService $authService;
+    protected ShipmentHandler $shipmentHandler;
+    protected TrackingHandler $trackingHandler;
+    protected RateHandler $rateHandler;
+    protected CodHandler $codHandler;
+    protected WebhookHandler $webhookHandler;
+    protected MetadataHandler $metadataHandler;
+
     public function __construct(PathaoConfig $config, ?HttpClient $httpClient = null)
     {
         $this->config = $config;
         $this->httpClient = $httpClient ?? new HttpClient();
         $this->mapper = new PathaoMapper();
-        
-        if (empty($this->config->getClientId()) || empty($this->config->getClientSecret())) {
-            throw new InvalidConfigurationException(
-                "Pathao configuration is incomplete. Client ID and Secret are required.",
-                0,
-                null,
-                'pathao'
-            );
-        }
+        $this->authService = new AuthenticationService($this->config, $this->httpClient);
+
+        $this->validateConfiguration();
+        $this->initializeHandlers();
     }
-    
+
     public function getName(): string
     {
         return 'pathao';
     }
-    
+
     public function getDisplayName(): string
     {
         return 'Pathao Courier';
     }
-    
+
     public function capabilities(): array
     {
         return [
@@ -78,12 +83,12 @@ class PathaoCourier implements
             'metadata.zones',
         ];
     }
-    
+
     public function supports(string $capability): bool
     {
         return in_array($capability, $this->capabilities());
     }
-    
+
     public function testConnection(): bool
     {
         try {
@@ -93,530 +98,140 @@ class PathaoCourier implements
             return false;
         }
     }
-    
+
     public function createShipment(Shipment|array $shipment): Shipment
     {
-        $shipment = DtoNormalizer::shipment($shipment);
-        
-        $errors = $shipment->validateForCreation();
-        if (!empty($errors)) {
-            throw new ApiException(
-                "Shipment validation failed: " . implode(', ', $errors),
+        return $this->withAuthentication(fn() => $this->shipmentHandler->create($shipment));
+    }
+
+    public function updateShipment(string $trackingId, Shipment|array $shipment): Shipment
+    {
+        return $this->withAuthentication(fn() => $this->shipmentHandler->update($trackingId, $shipment));
+    }
+
+    public function cancelShipment(string $trackingId, ?string $reason = null): bool
+    {
+        return $this->withAuthentication(fn() => $this->shipmentHandler->cancel($trackingId, $reason));
+    }
+
+    public function createBulkShipments(array $shipments): array
+    {
+        return $this->withAuthentication(fn() => $this->shipmentHandler->createBulk($shipments));
+    }
+
+    public function generateLabel(string $trackingId, string $format = 'pdf'): string
+    {
+        return $this->withAuthentication(fn() => $this->shipmentHandler->generateLabel($trackingId, $format));
+    }
+
+    public function requestPickup(string $trackingId, array $pickupDetails = []): bool
+    {
+        return $this->withAuthentication(fn() => $this->shipmentHandler->requestPickup($trackingId, $pickupDetails));
+    }
+
+    public function track(string $trackingId): Tracking
+    {
+        return $this->withAuthentication(fn() => $this->trackingHandler->track($trackingId));
+    }
+
+    public function trackBulk(array $trackingIds): array
+    {
+        return $this->withAuthentication(fn() => $this->trackingHandler->trackBulk($trackingIds));
+    }
+
+    public function getStatus(string $trackingId): string
+    {
+        return $this->withAuthentication(fn() => $this->trackingHandler->getStatus($trackingId));
+    }
+
+    public function estimateRate(Rate|array $rateRequest): Rate
+    {
+        return $this->withAuthentication(fn() => $this->rateHandler->estimate($rateRequest));
+    }
+
+    public function getServiceTypes(): array
+    {
+        return $this->rateHandler->getServiceTypes();
+    }
+
+    public function getCodDetails(string $trackingId): Cod
+    {
+        return $this->withAuthentication(fn() => $this->codHandler->getDetails($trackingId));
+    }
+
+    public function getCodLedger(array $filters = []): array
+    {
+        return $this->withAuthentication(fn() => $this->codHandler->getLedger($filters));
+    }
+
+    public function reconcileCod(array $trackingIds, array $settlementData = []): bool
+    {
+        return $this->withAuthentication(fn() => $this->codHandler->reconcile($trackingIds, $settlementData));
+    }
+
+    public function registerWebhook(string $url, array $events = []): bool
+    {
+        return $this->withAuthentication(fn() => $this->webhookHandler->register($url, $events));
+    }
+
+    public function unregisterWebhook(string $url): bool
+    {
+        return $this->withAuthentication(fn() => $this->webhookHandler->unregister($url));
+    }
+
+    public function parseWebhook($payload): ?Tracking
+    {
+        return $this->webhookHandler->parse($payload);
+    }
+
+    protected function validateConfiguration(): void
+    {
+        if (empty($this->config->getClientId()) || empty($this->config->getClientSecret())) {
+            throw new InvalidConfigurationException(
+                "Pathao configuration is incomplete. Client ID and Secret are required.",
                 0,
                 null,
                 'pathao'
             );
         }
-        
-        $this->authenticate();
-        
-        $payload = $this->mapper->mapShipmentToApi($shipment);
-        
-        $response = $this->httpClient->post(
-            $this->config->getApiUrl() . '/aladdin/api/v1/orders',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => $payload,
-            ]
-        );
-        
-        if ($response['status'] !== 200 && $response['status'] !== 201) {
-            throw new ApiException(
-                $response['data']['message'] ?? 'Failed to create shipment',
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $response['data']
-            );
-        }
-        
-        return $this->mapper->mapApiToShipment($response['data'], $shipment);
     }
-    
-    public function updateShipment(string $trackingId, Shipment|array $shipment): Shipment
-    {
-        $shipment = DtoNormalizer::shipment($shipment);
-        
-        $this->authenticate();
-        
-        $payload = $this->mapper->mapShipmentToApi($shipment);
-        
-        $response = $this->httpClient->put(
-            $this->config->getApiUrl() . '/aladdin/api/v1/orders/' . $trackingId,
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => $payload,
-            ]
-        );
-        
-        if ($response['status'] !== 200) {
-            throw new ApiException(
-                $response['data']['message'] ?? 'Failed to update shipment',
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $response['data']
-            );
-        }
-        
-        return $this->mapper->mapApiToShipment($response['data'], $shipment);
-    }
-    
-    public function cancelShipment(string $trackingId, ?string $reason = null): bool
-    {
-        $this->authenticate();
-        
-        $response = $this->httpClient->delete(
-            $this->config->getApiUrl() . '/aladdin/api/v1/orders/' . $trackingId,
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                ],
-                'json' => ['reason' => $reason],
-            ]
-        );
-        
-        return $response['status'] === 200 || $response['status'] === 204;
-    }
-    
-    public function createBulkShipments(array $shipments): array
-    {
-        // Normalize all shipments to DTOs
-        $shipments = DtoNormalizer::shipments($shipments);
-        
-        $this->authenticate();
-        
-        $payload = array_map(function (Shipment $shipment) {
-            return $this->mapper->mapShipmentToApi($shipment);
-        }, $shipments);
-        
-        $response = $this->httpClient->post(
-            $this->config->getApiUrl() . '/aladdin/api/v1/orders/bulk',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => ['orders' => $payload],
-            ]
-        );
-        
-        if ($response['status'] !== 200 && $response['status'] !== 201) {
-            throw new ApiException(
-                $response['data']['message'] ?? 'Failed to create bulk shipments',
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $response['data']
-            );
-        }
-        
-        $results = [];
-        foreach ($response['data']['orders'] ?? [] as $index => $orderData) {
-            $results[] = $this->mapper->mapApiToShipment($orderData, $shipments[$index] ?? new Shipment());
-        }
-        
-        return $results;
-    }
-    
-    public function generateLabel(string $trackingId, string $format = 'pdf'): string
-    {
-        $this->authenticate();
-        
-        $response = $this->httpClient->get(
-            $this->config->getApiUrl() . '/aladdin/api/v1/orders/' . $trackingId . '/label',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                ],
-                'query' => ['format' => $format],
-            ]
-        );
-        
-        if ($response['status'] !== 200) {
-            throw new ApiException(
-                'Failed to generate label',
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $response['data']
-            );
-        }
-        
-        // Return base64 encoded label or URL
-        return $response['data']['label_url'] ?? $response['data']['label_base64'] ?? '';
-    }
-    
-    public function requestPickup(string $trackingId, array $pickupDetails = []): bool
-    {
-        $this->authenticate();
-        
-        $response = $this->httpClient->post(
-            $this->config->getApiUrl() . '/aladdin/api/v1/orders/' . $trackingId . '/pickup',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => $pickupDetails,
-            ]
-        );
-        
-        return $response['status'] === 200 || $response['status'] === 201;
-    }
-    
-    // ==================== TrackingInterface ====================
-    
-    public function track(string $trackingId): Tracking
-    {
-        $this->authenticate();
-        
-        $response = $this->httpClient->get(
-            $this->config->getApiUrl() . '/aladdin/api/v1/orders/' . $trackingId . '/track',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                ],
-            ]
-        );
-        
-        if ($response['status'] !== 200) {
-            throw new ApiException(
-                'Failed to track shipment',
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $response['data']
-            );
-        }
-        
-        return $this->mapper->mapApiToTracking($response['data']);
-    }
-    
-    public function trackBulk(array $trackingIds): array
-    {
-        $this->authenticate();
-        
-        $response = $this->httpClient->post(
-            $this->config->getApiUrl() . '/aladdin/api/v1/orders/track/bulk',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => ['tracking_ids' => $trackingIds],
-            ]
-        );
-        
-        if ($response['status'] !== 200) {
-            throw new ApiException(
-                'Failed to track shipments',
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $response['data']
-            );
-        }
-        
-        $results = [];
-        foreach ($response['data']['trackings'] ?? [] as $trackingData) {
-            $trackingId = $trackingData['tracking_id'] ?? '';
-            $results[$trackingId] = $this->mapper->mapApiToTracking($trackingData);
-        }
-        
-        return $results;
-    }
-    
-    public function getStatus(string $trackingId): string
-    {
-        $tracking = $this->track($trackingId);
-        return $tracking->status ?? StatusMapper::CREATED;
-    }
-    
-    public function estimateRate(Rate|array $rateRequest): Rate
-    {
-        $rateRequest = DtoNormalizer::rate($rateRequest);
 
-        $this->validate(
-            $rateRequest,
-            [
-                'weight' => 'required|numeric|min:0.1|max:50',
-                'millat' => 'required|numeric|min:0',
-            ],
-            [
-                // Optional: rule-specific messages
-                'weight.required' => 'Weight is required.',
-                'weight.numeric'  => 'Weight must be a number.',
-            ],
-            [
-                // This is what the new formatter uses as the description
-                'weight' => 'Package weight in kilograms (between 0.1 and 50 kg). If unsure, use 1 kg.',
-                'millat' => 'Millat is required and must be a number. If unsure, use 0.',
-            ]
-        );
-        
-        $this->authenticate();
-        
-        $payload = $this->mapper->mapRateToApi($rateRequest);
-        
-        $response = $this->httpClient->post(
-            $this->config->getApiUrl() . '/aladdin/api/v1/rates',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => $payload,
-            ]
-        );
-        
-        if ($response['status'] !== 200) {
-            throw new ApiException(
-                'Failed to estimate rate',
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $response['data']
-            );
-        }
-        
-        return $this->mapper->mapApiToRate($response['data'], $rateRequest);
-    }
-    
-    public function getServiceTypes(): array
+    protected function initializeHandlers(): void
     {
-        return [
-            'same_day' => [
-                'name' => 'Same Day Delivery',
-                'sla' => 'Same day',
-                'available' => true,
-            ],
-            'next_day' => [
-                'name' => 'Next Day Delivery',
-                'sla' => 'Next day',
-                'available' => true,
-            ],
-            'standard' => [
-                'name' => 'Standard Delivery',
-                'sla' => '2-3 days',
-                'available' => true,
-            ],
-        ];
+        $this->shipmentHandler = new ShipmentHandler($this->config, $this->httpClient, $this->mapper);
+        $this->trackingHandler = new TrackingHandler($this->config, $this->httpClient, $this->mapper);
+        $this->rateHandler = new RateHandler($this->config, $this->httpClient, $this->mapper);
+        $this->codHandler = new CodHandler($this->config, $this->httpClient, $this->mapper);
+        $this->webhookHandler = new WebhookHandler($this->config, $this->httpClient, $this->mapper);
+        $this->metadataHandler = new MetadataHandler($this->config, $this->httpClient, $this->mapper);
     }
-    
-    public function getCodDetails(string $trackingId): Cod
+
+    protected function withAuthentication(\Closure $callback): mixed
     {
         $this->authenticate();
+        $this->syncTokenToHandlers();
         
-        $response = $this->httpClient->get(
-            $this->config->getApiUrl() . '/aladdin/api/v1/orders/' . $trackingId . '/cod',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                ],
-            ]
-        );
-        
-        if ($response['status'] !== 200) {
-            throw new ApiException(
-                'Failed to get COD details',
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $response['data']
-            );
-        }
-        
-        return $this->mapper->mapApiToCod($response['data']);
+        return $callback();
     }
-    
-    public function getCodLedger(array $filters = []): array
+
+    protected function authenticate(): void
     {
-        $this->authenticate();
-        
-        $response = $this->httpClient->get(
-            $this->config->getApiUrl() . '/aladdin/api/v1/cod/ledger',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                ],
-                'query' => $filters,
-            ]
-        );
-        
-        if ($response['status'] !== 200) {
-            throw new ApiException(
-                'Failed to get COD ledger',
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $response['data']
-            );
-        }
-        
-        $results = [];
-        foreach ($response['data']['cod_records'] ?? [] as $codData) {
-            $results[] = $this->mapper->mapApiToCod($codData);
-        }
-        
-        return $results;
-    }
-    
-    public function reconcileCod(array $trackingIds, array $settlementData = []): bool
-    {
-        $this->authenticate();
-        
-        $response = $this->httpClient->post(
-            $this->config->getApiUrl() . '/aladdin/api/v1/cod/reconcile',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => [
-                    'tracking_ids' => $trackingIds,
-                    ...$settlementData,
-                ],
-            ]
-        );
-        
-        return $response['status'] === 200 || $response['status'] === 201;
-    }
-    
-    public function registerWebhook(string $url, array $events = []): bool
-    {
-        $this->authenticate();
-        
-        $response = $this->httpClient->post(
-            $this->config->getApiUrl() . '/aladdin/api/v1/webhooks',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => [
-                    'url' => $url,
-                    'events' => $events ?: ['order.status.updated', 'order.delivered', 'order.returned'],
-                ],
-            ]
-        );
-        
-        return $response['status'] === 200 || $response['status'] === 201;
-    }
-    
-    public function unregisterWebhook(string $url): bool
-    {
-        $this->authenticate();
-        
-        $response = $this->httpClient->delete(
-            $this->config->getApiUrl() . '/aladdin/api/v1/webhooks',
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->accessToken,
-                ],
-                'json' => ['url' => $url],
-            ]
-        );
-        
-        return $response['status'] === 200 || $response['status'] === 204;
-    }
-    
-    public function parseWebhook($payload): ?Tracking
-    {
-        if (is_string($payload)) {
-            $payload = json_decode($payload, true);
-        }
-        
-        if (!is_array($payload)) {
-            return null;
-        }
-        
-        // Validate webhook signature if needed
-        // $this->validateWebhookSignature($payload);
-        
-        return $this->mapper->mapApiToTracking($payload);
-    }
-    
-    private function authenticate(): void
-    {
-        if ($this->accessToken && !$this->isTokenExpired()) {
+        if ($this->hasAccessToken() && !$this->isTokenExpired()) {
             return;
         }
-        
-        $authEndpoint = $this->config->getAuthUrl() . '/aladdin/api/v1/issue-token';
-        
-        $response = $this->httpClient->post(
-            $authEndpoint,
-            [
-                'json' => [
-                    'client_id' => $this->config->getClientId(),
-                    'client_secret' => $this->config->getClientSecret(),
-                    'username' => $this->config->getUsername(),
-                    'password' => $this->config->getPassword(),
-                    'grant_type' => 'password',
-                ],
-            ]
-        );
-        
-        $responseData = $response['data'] ?? [];
-        if (isset($responseData['error']) && $responseData['error'] === true) {
-            $errorMessage = $responseData['message'] ?? 'Failed to authenticate with Pathao';
-            throw new ApiException(
-                $errorMessage,
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $responseData
-            );
-        }
-        
-        if ($response['status'] !== 200) {
-            $errorMessage = $responseData['message'] ?? $responseData['error'] ?? 'Failed to authenticate with Pathao';
-            throw new ApiException(
-                $errorMessage,
-                $response['status'],
-                null,
-                'pathao',
-                $response['status'],
-                $responseData
-            );
-        }
-        
-        $this->accessToken = $responseData['access_token'] ?? null;
-        
-        if (isset($responseData['refresh_token'])) {
-        }
-        
-        if (!$this->accessToken) {
-            throw new ApiException(
-                'Invalid authentication response from Pathao. Token not found in response: ' . json_encode($responseData),
-                0,
-                null,
-                'pathao',
-                null,
-                $responseData
-            );
-        }
+
+        $this->setAccessToken($this->authService->authenticate());
     }
-    
-    private function isTokenExpired(): bool
+
+    protected function syncTokenToHandlers(): void
     {
-        return false;
+        $token = $this->getAccessToken();
+
+        $this->shipmentHandler->setAccessToken($token);
+        $this->trackingHandler->setAccessToken($token);
+        $this->rateHandler->setAccessToken($token);
+        $this->codHandler->setAccessToken($token);
+        $this->webhookHandler->setAccessToken($token);
+        $this->metadataHandler->setAccessToken($token);
     }
 }
