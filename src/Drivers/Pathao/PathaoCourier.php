@@ -17,6 +17,7 @@ use Millat\DeshCourier\Support\HttpClient;
 use Millat\DeshCourier\Support\DtoNormalizer;
 use Millat\DeshCourier\Exceptions\ApiException;
 use Millat\DeshCourier\Exceptions\InvalidConfigurationException;
+use Millat\DeshCourier\Support\Validate;
 
 /**
  * Pathao Courier Driver Implementation.
@@ -32,6 +33,8 @@ class PathaoCourier implements
     CodInterface,
     WebhookInterface
 {
+    use Validate;
+
     private PathaoConfig $config;
     private HttpClient $httpClient;
     private PathaoMapper $mapper;
@@ -364,8 +367,25 @@ class PathaoCourier implements
     
     public function estimateRate(Rate|array $rateRequest): Rate
     {
-        // Normalize to DTO
         $rateRequest = DtoNormalizer::rate($rateRequest);
+
+        $this->validate(
+            $rateRequest,
+            [
+                'weight' => 'required|numeric|min:0.1|max:50',
+                'millat' => 'required|numeric|min:0',
+            ],
+            [
+                // Optional: rule-specific messages
+                'weight.required' => 'Weight is required.',
+                'weight.numeric'  => 'Weight must be a number.',
+            ],
+            [
+                // This is what the new formatter uses as the description
+                'weight' => 'Package weight in kilograms (between 0.1 and 50 kg). If unsure, use 1 kg.',
+                'millat' => 'Millat is required and must be a number. If unsure, use 0.',
+            ]
+        );
         
         $this->authenticate();
         
